@@ -65,6 +65,7 @@ void MtftpServer::onPacketRecv(uint8_t *data, uint16_t len_data) {
       // if ACK matches last block number sent AND the last block was not full
       // there is no more data to transfer
       if (pkt->block_no == transfer_params.block_no && transfer_params.bytes_read < CONFIG_LEN_BLOCK) {
+        ESP_LOGI(TAG, "onPacketRecv: ACK correct, transfer finished");
         new_state = STATE_IDLE;
         break;
       }
