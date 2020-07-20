@@ -1,5 +1,7 @@
 #include "esp_log.h"
 
+#include "sdkconfig.h"
+
 #include "mtftp.h"
 #include "mtftp_server.hpp"
 
@@ -62,13 +64,13 @@ void MtftpServer::onPacketRecv(uint8_t *data, uint16_t len_data) {
 
       // if ACK matches last block number sent AND the last block was not full
       // there is no more data to transfer
-      if (pkt->block_no == transfer_params.block_no && transfer_params.bytes_read < LEN_BLOCK) {
+      if (pkt->block_no == transfer_params.block_no && transfer_params.bytes_read < CONFIG_LEN_BLOCK) {
         new_state = STATE_IDLE;
         break;
       }
 
       // advance file_offset by the number of bytes successfully transferred
-      transfer_params.file_offset = (transfer_params.block_no * LEN_BLOCK) + transfer_params.bytes_read;
+      transfer_params.file_offset = (transfer_params.block_no * CONFIG_LEN_BLOCK) + transfer_params.bytes_read;
       transfer_params.block_no = 0;
 
       // start transfer of next window
@@ -91,12 +93,12 @@ void MtftpServer::loop(void) {
 
     data_pkt.block_no = transfer_params.block_no;
 
-    uint16_t offset = transfer_params.file_offset + (transfer_params.block_no * LEN_BLOCK);
+    uint16_t offset = transfer_params.file_offset + (transfer_params.block_no * CONFIG_LEN_BLOCK);
     if (!readFile(
       transfer_params.file_index,
       offset,
       data_pkt.block,
-      LEN_BLOCK,
+      CONFIG_LEN_BLOCK,
       &transfer_params.bytes_read
     )) {
       ESP_LOGW(TAG, "loop: reading from %d at offset %d failed. state=IDLE", transfer_params.file_index, offset);
@@ -112,7 +114,7 @@ void MtftpServer::loop(void) {
 
     sendPacket((uint8_t *) &data_pkt, LEN_DATA_HEADER + transfer_params.bytes_read);
 
-    if (transfer_params.bytes_read < LEN_BLOCK) {
+    if (transfer_params.bytes_read < CONFIG_LEN_BLOCK) {
       // just read final block available
       state = STATE_WAIT_ACK;
     } else if (transfer_params.block_no >= (transfer_params.window_size - 1)) {

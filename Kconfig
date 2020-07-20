@@ -5,4 +5,10 @@ config WINDOW_SIZE
     range 1 65535
     help
     Number of blocks to transfer in a single window
+config LEN_BLOCK
+    int "Block Size"
+    default 247
+    range 1 247
+    help
+    Size of one block of data (bytes)
 endmenu

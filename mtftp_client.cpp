@@ -1,5 +1,7 @@
 #include "esp_log.h"
 
+#include "sdkconfig.h"
+
 #include "mtftp.h"
 #include "mtftp_client.hpp"
 
@@ -49,7 +51,7 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
         ESP_LOGD(TAG, "onPacketRecv: received block %d with len %d", data_pkt->block_no, len_block_data);
         writeFile(
           transfer_params.file_index,
-          transfer_params.file_offset + (data_pkt->block_no * LEN_BLOCK),
+          transfer_params.file_offset + (data_pkt->block_no * CONFIG_LEN_BLOCK),
           data_pkt->block,
           len_block_data
         );
@@ -62,7 +64,7 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
 
       // end of the window:
       // receiving less than one full block of data
-      if (len_block_data < LEN_BLOCK) {
+      if (len_block_data < CONFIG_LEN_BLOCK) {
         ESP_LOGI(TAG, "onPacketRecv: end of window (partial block of %d bytes)", len_block_data);
       } else if (transfer_params.block_no == transfer_params.window_size) {
         // or received window_size blocks

@@ -1,12 +1,11 @@
 #ifndef MTFTP_H
 #define MTFTP_H
 
+#include "sdkconfig.h"
 #include <stdint.h>
 
 // length of header of packet_data (minus length of block)
 const uint8_t LEN_DATA_HEADER = 3;
-// block is 247 bytes so the entire data packet is 250 bytes (ESP-NOW max length)
-const uint8_t LEN_BLOCK = 247;
 
 enum packet_types {
   TYPE_READ_REQUEST = 1,
@@ -38,7 +37,7 @@ typedef struct __attribute__((__packed__)) packet_rrq {
 typedef struct __attribute__((__packed__)) packet_data {
   enum packet_types opcode:8;
   uint16_t block_no;
-  uint8_t block[LEN_BLOCK];
+  uint8_t block[CONFIG_LEN_BLOCK];
 
   packet_data(): opcode(TYPE_DATA) {}
 } packet_data_t;
