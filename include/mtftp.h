@@ -18,9 +18,7 @@ enum err_types {
   ERR_FREAD = 1
 };
 
-const char *err_types_str[] = {
-  "FileReadErr"
-};
+extern const char *err_types_str[1];
 
 typedef struct __attribute__((__packed__)) packet_rrq {
   enum packet_types opcode:8;
