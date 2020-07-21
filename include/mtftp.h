@@ -15,7 +15,7 @@ enum packet_types {
 };
 
 enum err_types {
-  ERR_FREAD = 1
+  ERR_FREAD
 };
 
 extern const char *err_types_str[1];
