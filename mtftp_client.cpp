@@ -59,7 +59,6 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
         transfer_params.block_no = data_pkt->block_no;
       } else {
         ESP_LOGW(TAG, "onPacketRecv: out of order packet: expected %d, got %d", transfer_params.block_no + 1, data_pkt->block_no);
-        break;
       }
 
       // end of the window:
