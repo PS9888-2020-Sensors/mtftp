@@ -65,12 +65,15 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
         ESP_LOGD(TAG, "onPacketRecv: received block %d with len %d", data_pkt->block_no, len_block_data);
         writeFile(
           transfer_params.file_index,
-          transfer_params.file_offset + (data_pkt->block_no * CONFIG_LEN_BLOCK),
+          transfer_params.file_offset,
           data_pkt->block,
           len_block_data
         );
 
         transfer_params.block_no = data_pkt->block_no;
+
+        // advance file_offset by the number of bytes we just received
+        transfer_params.file_offset += len_block_data;
       } else {
         ESP_LOGW(TAG, "onPacketRecv: out of order packet: expected %d, got %d", transfer_params.block_no + 1, data_pkt->block_no);
       }
@@ -79,8 +82,9 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
       // receiving less than one full block of data
       if (len_block_data < CONFIG_LEN_BLOCK) {
         ESP_LOGI(TAG, "onPacketRecv: end of window (partial block of %d bytes)", len_block_data);
-      } else if (transfer_params.block_no == transfer_params.window_size) {
-        // or received window_size blocks
+      } else if (data_pkt->block_no == (transfer_params.window_size - 1)) {
+        // or this packet is the final block in the window
+        // possibility that prior packets have been lost
         ESP_LOGI(TAG, "onPacketRecv: end of window (%d blocks)", transfer_params.window_size);
       } else {
         break;
@@ -95,10 +99,6 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
 
       sendPacket((uint8_t *) &ack_pkt, sizeof(ack_pkt));
       new_state = STATE_ACK_SENT;
-
-      // advance file_offset by the number of bytes we just ACKed
-      transfer_params.file_offset += (transfer_params.block_no * CONFIG_LEN_BLOCK) + 
-        (data_pkt->block_no == transfer_params.file_offset ? len_block_data : CONFIG_LEN_BLOCK);
 
       break;
     }
@@ -136,6 +136,7 @@ void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset) {
 
   transfer_params.file_index = file_index;
   transfer_params.file_offset = file_offset;
+  transfer_params.window_size = CONFIG_WINDOW_SIZE;
   transfer_params.block_no = -1;
 
   packet_rrq_t rrq_pkt;

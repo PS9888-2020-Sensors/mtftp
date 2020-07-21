@@ -72,10 +72,11 @@ void MtftpServer::onPacketRecv(uint8_t *data, uint16_t len_data) {
       }
 
       // advance file_offset by the number of bytes successfully transferred
-      transfer_params.file_offset = (pkt->block_no * CONFIG_LEN_BLOCK) +
+      transfer_params.file_offset += (pkt->block_no * CONFIG_LEN_BLOCK) +
       // block_no is one less than actual number of blocks transferred, so add final block
       // final block might be partial, so use bytes_read instead of full block
         (pkt->block_no == transfer_params.block_no ? transfer_params.bytes_read: CONFIG_LEN_BLOCK);
+
       transfer_params.block_no = 0;
 
       // start transfer of next window
