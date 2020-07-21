@@ -84,6 +84,22 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
 
       break;
     }
+    case TYPE_ERR:
+    {
+      if (len_data != sizeof(packet_err_t)) {
+        ESP_LOGW(TAG, "onPacketRecv: len ERR packet is %d (!= %d)", len_data, sizeof(packet_err_t));
+        break;
+      }
+
+      packet_err_t *pkt = (packet_err_t *) data;
+
+      ESP_LOGW(TAG, "onPacketRecv: recv err %s", err_types_str[pkt->err]);
+
+      if (state != STATE_IDLE) {
+        new_state = STATE_IDLE;
+      }
+      break;
+    }
     default:
       ESP_LOGW(TAG, "onPacketRecv: bad packet opcode: %02X", *data);
   }
