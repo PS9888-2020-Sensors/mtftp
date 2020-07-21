@@ -33,12 +33,26 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
         break;
       }
 
-      if (state != STATE_TRANSFER) {
+      if (state != STATE_TRANSFER && state != STATE_ACK_SENT) {
         ESP_LOGW(TAG, "onPacketRecv: DATA received in state %s", client_state_str[state]);
         break;
       }
 
       packet_data_t *data_pkt = (packet_data_t *) data;
+
+      // new window
+      if (state == STATE_ACK_SENT) {
+        // first block received should be block 0
+        if (data_pkt->block_no != 0) {
+          ESP_LOGW(TAG, "onPacketRecv: first block after ACK has non zero block_no: %d", data_pkt->block_no);
+          new_state = STATE_IDLE;
+          break;
+        }
+
+        transfer_params.block_no = -1;
+        new_state = STATE_TRANSFER;
+      }
+
       uint16_t len_block_data = len_data - LEN_DATA_HEADER;
 
       if (data_pkt->block_no >= transfer_params.window_size) {
@@ -80,6 +94,11 @@ void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
       ack_pkt.block_no = transfer_params.block_no;
 
       sendPacket((uint8_t *) &ack_pkt, sizeof(ack_pkt));
+      new_state = STATE_ACK_SENT;
+
+      // advance file_offset by the number of bytes we just ACKed
+      transfer_params.file_offset += (transfer_params.block_no * CONFIG_LEN_BLOCK) + 
+        (data_pkt->block_no == transfer_params.file_offset ? len_block_data : CONFIG_LEN_BLOCK);
 
       break;
     }
