@@ -62,16 +62,20 @@ void MtftpServer::onPacketRecv(uint8_t *data, uint16_t len_data) {
 
       packet_ack_t *pkt = (packet_ack_t *) data;
 
+      ESP_LOGI(TAG, "onPacketRecv: ACK of %d", pkt->block_no);
+
       // if ACK matches last block number sent AND the last block was not full
       // there is no more data to transfer
       if (pkt->block_no == transfer_params.block_no && transfer_params.bytes_read < CONFIG_LEN_BLOCK) {
-        ESP_LOGI(TAG, "onPacketRecv: ACK correct, transfer finished");
         new_state = STATE_IDLE;
         break;
       }
 
       // advance file_offset by the number of bytes successfully transferred
-      transfer_params.file_offset = (transfer_params.block_no * CONFIG_LEN_BLOCK) + transfer_params.bytes_read;
+      transfer_params.file_offset = (pkt->block_no * CONFIG_LEN_BLOCK) +
+      // block_no is one less than actual number of blocks transferred, so add final block
+      // final block might be partial, so use bytes_read instead of full block
+        (pkt->block_no == transfer_params.block_no ? transfer_params.bytes_read: CONFIG_LEN_BLOCK);
       transfer_params.block_no = 0;
 
       // start transfer of next window
