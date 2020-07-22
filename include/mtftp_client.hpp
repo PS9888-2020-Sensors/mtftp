@@ -21,6 +21,8 @@ class MtftpClient {
       bool (*_writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw),
       void (*_sendPacket)(const uint8_t *data, uint8_t len)
     );
+
+    void setOnIdleCb(void (*_onIdle)());
     void onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
   private:
@@ -38,6 +40,7 @@ class MtftpClient {
 
     bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw);
     void (*sendPacket)(const uint8_t *data, uint8_t len);
+    void (*onIdle)();
 };
 
 #endif

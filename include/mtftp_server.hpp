@@ -21,6 +21,8 @@ class MtftpServer {
       bool (*_readFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br),
       void (*_sendPacket)(const uint8_t *data, uint8_t len)
     );
+
+    void setOnIdleCb(void (*_onIdle)());
     void onPacketRecv(const uint8_t *data, uint16_t len_data);
     void loop(void);
   private:
@@ -37,6 +39,7 @@ class MtftpServer {
 
     bool (*readFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br);
     void (*sendPacket)(const uint8_t *data, uint8_t len);
+    void (*onIdle)();
 };
 
 #endif

@@ -17,6 +17,10 @@ void MtftpServer::init(
   sendPacket = _sendPacket;
 }
 
+void MtftpServer::setOnIdleCb(void (*_onIdle)()) {
+  onIdle = _onIdle;
+}
+
 void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
@@ -89,6 +93,11 @@ void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
 
   if (new_state != STATE_NOCHANGE) {
     ESP_LOGI(TAG, "onPacketRecv: state change from %s to %s", server_state_str[state], server_state_str[new_state]);
+
+    if (new_state == STATE_IDLE) {
+      if (*onIdle != NULL) onIdle();
+    }
+
     state = new_state;
   }
 }

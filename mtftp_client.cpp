@@ -17,6 +17,10 @@ void MtftpClient::init(
   sendPacket = _sendPacket;
 }
 
+void MtftpClient::setOnIdleCb(void (*_onIdle)()) {
+  onIdle = _onIdle;
+}
+
 void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
@@ -81,7 +85,7 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
       // end of the window:
       // receiving less than one full block of data
       if (len_block_data < CONFIG_LEN_BLOCK) {
-        ESP_LOGI(TAG, "onPacketRecv: end of window (partial block of %d bytes)", len_block_data);
+        ESP_LOGI(TAG, "onPacketRecv: end of transfer (partial block of %d bytes)", len_block_data);
       } else if (data_pkt->block_no == (transfer_params.window_size - 1)) {
         // or this packet is the final block in the window
         // possibility that prior packets have been lost
@@ -104,7 +108,7 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
       if (len_block_data < CONFIG_LEN_BLOCK && data_pkt->block_no == transfer_params.block_no) {
         new_state = STATE_IDLE;
       } else {
-      new_state = STATE_ACK_SENT;
+        new_state = STATE_ACK_SENT;
       }
 
       break;
@@ -131,6 +135,11 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
 
   if (new_state != STATE_NOCHANGE) {
     ESP_LOGI(TAG, "onPacketRecv: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
+
+    if (new_state == STATE_IDLE) {
+      if (*onIdle != NULL) onIdle();
+    }
+
     state = new_state;
   }
 }
