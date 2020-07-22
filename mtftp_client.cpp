@@ -8,8 +8,8 @@
 static const char *TAG = "mtftp-client";
 
 void MtftpClient::init(
-    bool (*_writeFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btw),
-    void (*_sendPacket)(uint8_t *data, uint8_t len)
+    bool (*_writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw),
+    void (*_sendPacket)(const uint8_t *data, uint8_t len)
   ) {
   state = STATE_IDLE;
 
@@ -17,7 +17,7 @@ void MtftpClient::init(
   sendPacket = _sendPacket;
 }
 
-void MtftpClient::onPacketRecv(uint8_t *data, uint16_t len_data) {
+void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
     return;

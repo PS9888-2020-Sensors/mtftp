@@ -18,10 +18,10 @@ class MtftpClient {
     };
 
     void init(
-      bool (*_writeFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btw),
-      void (*_sendPacket)(uint8_t *data, uint8_t len)
+      bool (*_writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw),
+      void (*_sendPacket)(const uint8_t *data, uint8_t len)
     );
-    void onPacketRecv(uint8_t *data, uint16_t len_data);
+    void onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
   private:
     enum client_state state;
@@ -36,8 +36,8 @@ class MtftpClient {
       int32_t block_no;
     } transfer_params;
 
-    bool (*writeFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btw);
-    void (*sendPacket)(uint8_t *data, uint8_t len);
+    bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw);
+    void (*sendPacket)(const uint8_t *data, uint8_t len);
 };
 
 #endif
