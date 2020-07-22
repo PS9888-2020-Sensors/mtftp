@@ -98,7 +98,14 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
       ack_pkt.block_no = transfer_params.block_no;
 
       sendPacket((uint8_t *) &ack_pkt, sizeof(ack_pkt));
+
+      // the current block is not full (final block) and the current block has been received successfully
+      // so all prior blocks in this window has been received, end of transfer
+      if (len_block_data < CONFIG_LEN_BLOCK && data_pkt->block_no == transfer_params.block_no) {
+        new_state = STATE_IDLE;
+      } else {
       new_state = STATE_ACK_SENT;
+      }
 
       break;
     }
