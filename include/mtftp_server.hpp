@@ -1,6 +1,8 @@
 #ifndef MTFTP_SERVER_H
 #define MTFTP_SERVER_H
 
+#include "mtftp.h"
+
 class MtftpServer {
   public:
     enum server_state {
@@ -35,6 +37,8 @@ class MtftpServer {
 
       uint16_t block_no;
       uint16_t bytes_read;
+
+      int64_t time_last_packet = 0;
     } transfer_params;
 
     bool (*readFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br);

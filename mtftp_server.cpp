@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "esp_timer.h"
 
 #include "sdkconfig.h"
 
@@ -118,6 +119,10 @@ recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) 
     state = new_state;
   }
 
+  if (result == RECV_OK) {
+    transfer_params.time_last_packet = esp_timer_get_time();
+  }
+
   return result;
 }
 
@@ -165,6 +170,11 @@ void MtftpServer::loop(void) {
     }
     default:
       break;
+  }
+
+  if (state != STATE_IDLE && transfer_params.time_last_packet > CONFIG_TIMEOUT) {
+    ESP_LOGW(TAG, "timeout!");
+    new_state = STATE_IDLE;
   }
 
   if (new_state != STATE_NOCHANGE) {

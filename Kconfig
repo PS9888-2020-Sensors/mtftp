@@ -11,4 +11,10 @@ config LEN_BLOCK
     range 1 247
     help
     Size of one block of data (bytes)
+config TIMEOUT
+    int "Timeout (us)"
+    default 100000
+    range 1 10000000
+    help
+    System times out after time in microseconds
 endmenu

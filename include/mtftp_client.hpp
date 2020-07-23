@@ -1,6 +1,8 @@
 #ifndef MTFTP_CLIENT_H
 #define MTFTP_CLIENT_H
 
+#include "mtftp.h"
+
 class MtftpClient {
   public:
     enum client_state {
@@ -25,6 +27,7 @@ class MtftpClient {
     void setOnIdleCb(void (*_onIdle)());
     recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
+    void loop(void);
   private:
     enum client_state state;
 
@@ -36,6 +39,8 @@ class MtftpClient {
       
       // int32_t to represent -1 to 65535
       int32_t block_no;
+
+      int64_t time_last_packet = 0;
     } transfer_params;
 
     bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw);

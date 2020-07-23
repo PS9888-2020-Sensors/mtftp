@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "esp_timer.h"
 
 #include "sdkconfig.h"
 
@@ -162,6 +163,10 @@ recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) 
     state = new_state;
   }
 
+  if (result == RECV_OK) {
+    transfer_params.time_last_packet = esp_timer_get_time();
+  }
+
   return result;
 }
 
@@ -186,4 +191,23 @@ void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset) {
 
   ESP_LOGI(TAG, "beginRead: sent RRQ for %d at offset %d", file_index, file_offset);
   state = STATE_TRANSFER;
+}
+
+void MtftpClient::loop(void) {
+  enum client_state new_state = STATE_NOCHANGE;
+
+  if (state != STATE_IDLE && transfer_params.time_last_packet > CONFIG_TIMEOUT) {
+    ESP_LOGW(TAG, "timeout!");
+    new_state = STATE_IDLE;
+  }
+
+  if (new_state != STATE_NOCHANGE) {
+    ESP_LOGI(TAG, "loop: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
+
+    if (new_state == STATE_IDLE) {
+      if (*onIdle != NULL) onIdle();
+    }
+
+    state = new_state;
+  }
 }
