@@ -21,11 +21,13 @@ void MtftpServer::setOnIdleCb(void (*_onIdle)()) {
   onIdle = _onIdle;
 }
 
-void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
+recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
-    return;
+    return RECV_LEN;
   }
+
+  recv_result_t result = RECV_UNSET;
 
   enum server_state new_state = STATE_NOCHANGE;
 
@@ -34,11 +36,15 @@ void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
     {
       if (len_data != sizeof(packet_rrq_t)) {
         ESP_LOGW(TAG, "onPacketRecv: len RRQ packet is %d (!= %d)", len_data, sizeof(packet_rrq_t));
+
+        result = RECV_LEN;
         break;
       }
 
       if (state != STATE_IDLE) {
         ESP_LOGW(TAG, "onPacketRecv: RRQ received in state %s", server_state_str[state]);
+
+        result = RECV_STATE;
         break;
       }
 
@@ -50,19 +56,27 @@ void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
       transfer_params.block_no = 0;
 
       new_state = STATE_TRANSFER;
+
+      result = RECV_OK;
       break;
     }
     case TYPE_ACK:
     {
       if (len_data != sizeof(packet_ack_t)) {
         ESP_LOGW(TAG, "onPacketRecv: len ACK packet is %d (!= %d)", len_data, sizeof(packet_ack_t));
+
+        result = RECV_LEN;
         break;
       }
 
       if (state != STATE_WAIT_ACK) {
         ESP_LOGW(TAG, "onPacketRecv: ACK received in state %s", server_state_str[state]);
+
+        result = RECV_STATE;
         break;
       }
+
+      result = RECV_OK;
 
       packet_ack_t *pkt = (packet_ack_t *) data;
 
@@ -89,6 +103,9 @@ void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
     }
     default:
       ESP_LOGW(TAG, "onPacketRecv: bad packet opcode: %02X", *data);
+      
+      result = RECV_BAD_OPCODE;
+      break;
   }
 
   if (new_state != STATE_NOCHANGE) {
@@ -100,6 +117,8 @@ void MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
 
     state = new_state;
   }
+
+  return result;
 }
 
 void MtftpServer::loop(void) {

@@ -21,11 +21,13 @@ void MtftpClient::setOnIdleCb(void (*_onIdle)()) {
   onIdle = _onIdle;
 }
 
-void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
+recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
-    return;
+    return RECV_LEN;
   }
+
+  recv_result_t result = RECV_UNSET;
 
   enum client_state new_state = STATE_NOCHANGE;
 
@@ -34,11 +36,15 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
     {
       if (len_data < LEN_DATA_HEADER) {
         ESP_LOGW(TAG, "onPacketRecv: len DATA packet is %d (< %d)", len_data, LEN_DATA_HEADER);
+
+        result = RECV_LEN;
         break;
       }
 
       if (state != STATE_TRANSFER && state != STATE_ACK_SENT) {
         ESP_LOGW(TAG, "onPacketRecv: DATA received in state %s", client_state_str[state]);
+
+        result = RECV_STATE;
         break;
       }
 
@@ -50,6 +56,8 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
         if (data_pkt->block_no != 0) {
           ESP_LOGW(TAG, "onPacketRecv: first block after ACK has non zero block_no: %d", data_pkt->block_no);
           new_state = STATE_IDLE;
+
+          result = RECV_BAD_AFT_ACK;
           break;
         }
 
@@ -62,8 +70,12 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
       if (data_pkt->block_no >= transfer_params.window_size) {
         ESP_LOGW(TAG, "onPacketRecv: received block %d when window size is only %d", data_pkt->block_no, transfer_params.window_size);
         new_state = STATE_IDLE;
+
+        result = RECV_BAD_BLOCK_NO;
         break;
       }
+
+      result = RECV_OK;
 
       if (data_pkt->block_no == (transfer_params.block_no + 1)) {
         ESP_LOGD(TAG, "onPacketRecv: received block %d with len %d", data_pkt->block_no, len_block_data);
@@ -117,8 +129,12 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
     {
       if (len_data != sizeof(packet_err_t)) {
         ESP_LOGW(TAG, "onPacketRecv: len ERR packet is %d (!= %d)", len_data, sizeof(packet_err_t));
+
+        result = RECV_LEN;
         break;
       }
+
+      result = RECV_OK;
 
       packet_err_t *pkt = (packet_err_t *) data;
 
@@ -131,6 +147,9 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
     }
     default:
       ESP_LOGW(TAG, "onPacketRecv: bad packet opcode: %02X", *data);
+      
+      result = RECV_BAD_OPCODE;
+      break;
   }
 
   if (new_state != STATE_NOCHANGE) {
@@ -142,6 +161,8 @@ void MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
 
     state = new_state;
   }
+
+  return result;
 }
 
 void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset) {

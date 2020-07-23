@@ -23,7 +23,7 @@ class MtftpClient {
     );
 
     void setOnIdleCb(void (*_onIdle)());
-    void onPacketRecv(const uint8_t *data, uint16_t len_data);
+    recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
   private:
     enum client_state state;

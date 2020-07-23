@@ -54,4 +54,14 @@ typedef struct __attribute__((__packed__)) packet_err {
   packet_err(): opcode(TYPE_ERR) {}
 } packet_err_t;
 
+typedef enum {
+  RECV_UNSET,
+  RECV_OK,
+  RECV_LEN,
+  RECV_STATE,
+  RECV_BAD_OPCODE,
+  RECV_BAD_AFT_ACK,
+  RECV_BAD_BLOCK_NO
+} recv_result_t;
+
 #endif
