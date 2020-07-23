@@ -172,7 +172,7 @@ void MtftpServer::loop(void) {
       break;
   }
 
-  if (state != STATE_IDLE && transfer_params.time_last_packet > CONFIG_TIMEOUT) {
+  if (state != STATE_IDLE && (esp_timer_get_time() - transfer_params.time_last_packet) > CONFIG_TIMEOUT) {
     ESP_LOGW(TAG, "timeout!");
     new_state = STATE_IDLE;
   }

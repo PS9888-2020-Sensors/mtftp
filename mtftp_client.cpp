@@ -196,7 +196,7 @@ void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset) {
 void MtftpClient::loop(void) {
   enum client_state new_state = STATE_NOCHANGE;
 
-  if (state != STATE_IDLE && transfer_params.time_last_packet > CONFIG_TIMEOUT) {
+  if (state != STATE_IDLE && (esp_timer_get_time() - transfer_params.time_last_packet) > CONFIG_TIMEOUT) {
     ESP_LOGW(TAG, "timeout!");
     new_state = STATE_IDLE;
   }
