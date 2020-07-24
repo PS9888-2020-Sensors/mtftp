@@ -166,6 +166,10 @@ void MtftpServer::loop(void) {
       } else {
         transfer_params.block_no ++;
       }
+
+      // update time_last_packet here because the client is not expected to transmit
+      // while the window hasnt been completely transferred
+      transfer_params.time_last_packet = esp_timer_get_time();
       break;
     }
     default:
