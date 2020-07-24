@@ -155,7 +155,7 @@ void MtftpServer::loop(void) {
         break;
       }
 
-      ESP_LOGD(TAG, "sending block %d", data_pkt.block_no);
+      ESP_LOGD(TAG, "sending block %d len=%d", data_pkt.block_no, transfer_params.bytes_read);
 
       sendPacket((uint8_t *) &data_pkt, LEN_DATA_HEADER + transfer_params.bytes_read);
 
