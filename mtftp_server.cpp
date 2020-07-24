@@ -136,7 +136,7 @@ void MtftpServer::loop(void) {
 
       data_pkt.block_no = transfer_params.block_no;
 
-      uint16_t offset = transfer_params.file_offset + (transfer_params.block_no * CONFIG_LEN_BLOCK);
+      uint32_t offset = transfer_params.file_offset + (transfer_params.block_no * CONFIG_LEN_BLOCK);
       if (!readFile(
         transfer_params.file_index,
         offset,
@@ -154,6 +154,8 @@ void MtftpServer::loop(void) {
         new_state = STATE_IDLE;
         break;
       }
+
+      ESP_LOGD(TAG, "sending block %d", data_pkt.block_no);
 
       sendPacket((uint8_t *) &data_pkt, LEN_DATA_HEADER + transfer_params.bytes_read);
 
