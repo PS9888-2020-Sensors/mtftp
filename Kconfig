@@ -1,7 +1,7 @@
 menu "MTFTP Configuration"
 config WINDOW_SIZE
     int "Window Size"
-    default 2048
+    default 128
     range 1 65535
     help
     Number of blocks to transfer in a single window
