@@ -22,6 +22,14 @@ void MtftpClient::setOnIdleCb(void (*_onIdle)()) {
   onIdle = _onIdle;
 }
 
+void MtftpClient::setOnTimeoutCb(void (*_onTimeout)()) {
+  onTimeout = _onTimeout;
+}
+
+void MtftpClient::setOnTransferEndCb(void (*_onTransferEnd)()) {
+  onTransferEnd = _onTransferEnd;
+}
+
 recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
@@ -120,6 +128,8 @@ recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) 
       // so all prior blocks in this window has been received, end of transfer
       if (len_block_data < CONFIG_LEN_BLOCK && data_pkt->block_no == transfer_params.block_no) {
         new_state = STATE_IDLE;
+
+        if (*onTransferEnd != NULL) onTransferEnd();
       } else {
         new_state = STATE_ACK_SENT;
       }
@@ -198,6 +208,8 @@ void MtftpClient::loop(void) {
 
   if (state != STATE_IDLE && (esp_timer_get_time() - transfer_params.time_last_packet) > CONFIG_TIMEOUT) {
     ESP_LOGW(TAG, "timeout!");
+
+    if (*onTimeout != NULL) onTimeout();
     new_state = STATE_IDLE;
   }
 

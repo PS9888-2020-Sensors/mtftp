@@ -22,6 +22,10 @@ void MtftpServer::setOnIdleCb(void (*_onIdle)()) {
   onIdle = _onIdle;
 }
 
+void MtftpServer::setOnTimeoutCb(void (*_onTimeout)()) {
+  onTimeout = _onTimeout;
+}
+
 recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) {
   if (len_data < 1) {
     ESP_LOGW(TAG, "onPacketRecv: called with len_data == 0!");
@@ -180,6 +184,8 @@ void MtftpServer::loop(void) {
 
   if (state != STATE_IDLE && (esp_timer_get_time() - transfer_params.time_last_packet) > CONFIG_TIMEOUT) {
     ESP_LOGW(TAG, "timeout!");
+
+    if (*onTimeout != NULL) onTimeout();
     new_state = STATE_IDLE;
   }
 

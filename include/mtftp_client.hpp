@@ -25,6 +25,8 @@ class MtftpClient {
     );
 
     void setOnIdleCb(void (*_onIdle)());
+    void setOnTimeoutCb(void (*_onTimeout)());
+    void setOnTransferEndCb(void (*_onTransferEnd)());
     recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
     void loop(void);
@@ -46,6 +48,8 @@ class MtftpClient {
     bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw);
     void (*sendPacket)(const uint8_t *data, uint8_t len);
     void (*onIdle)();
+    void (*onTimeout)();
+    void (*onTransferEnd)();
 };
 
 #endif
