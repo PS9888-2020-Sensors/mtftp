@@ -55,6 +55,8 @@ recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) 
 
       packet_rrq_t *pkt = (packet_rrq_t *) data;
 
+      ESP_LOGI(TAG, "RRQ for index=%d offset=%d", pkt->file_index, pkt->file_offset);
+
       transfer_params.file_index = pkt->file_index;
       transfer_params.file_offset = pkt->file_offset;
       transfer_params.window_size = pkt->window_size;
@@ -85,7 +87,7 @@ recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) 
 
       packet_ack_t *pkt = (packet_ack_t *) data;
 
-      ESP_LOGI(TAG, "onPacketRecv: ACK of %d", pkt->block_no);
+      ESP_LOGD(TAG, "onPacketRecv: ACK of %d", pkt->block_no);
 
       // if ACK matches last block number sent AND the last block was not full
       // there is no more data to transfer
@@ -114,7 +116,7 @@ recv_result_t MtftpServer::onPacketRecv(const uint8_t *data, uint16_t len_data) 
   }
 
   if (new_state != STATE_NOCHANGE) {
-    ESP_LOGI(TAG, "onPacketRecv: state change from %s to %s", server_state_str[state], server_state_str[new_state]);
+    ESP_LOGD(TAG, "onPacketRecv: state change from %s to %s", server_state_str[state], server_state_str[new_state]);
 
     if (new_state == STATE_IDLE) {
       if (*onIdle != NULL) onIdle();
@@ -190,7 +192,7 @@ void MtftpServer::loop(void) {
   }
 
   if (new_state != STATE_NOCHANGE) {
-    ESP_LOGI(TAG, "loop: state change from %s to %s", server_state_str[state], server_state_str[new_state]);
+    ESP_LOGD(TAG, "loop: state change from %s to %s", server_state_str[state], server_state_str[new_state]);
 
     if (new_state == STATE_IDLE) {
       if (*onIdle != NULL) onIdle();

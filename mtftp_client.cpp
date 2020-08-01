@@ -106,11 +106,11 @@ recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) 
       // end of the window:
       // receiving less than one full block of data
       if (len_block_data < CONFIG_LEN_BLOCK) {
-        ESP_LOGI(TAG, "onPacketRecv: end of transfer (partial block of %d bytes)", len_block_data);
+        ESP_LOGD(TAG, "onPacketRecv: end of transfer (partial block of %d bytes)", len_block_data);
       } else if (data_pkt->block_no == (transfer_params.window_size - 1)) {
         // or this packet is the final block in the window
         // possibility that prior packets have been lost
-        ESP_LOGI(TAG, "onPacketRecv: end of window (%d blocks)", transfer_params.window_size);
+        ESP_LOGD(TAG, "onPacketRecv: end of window (%d blocks)", transfer_params.window_size);
       } else {
         break;
       }
@@ -164,7 +164,7 @@ recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) 
   }
 
   if (new_state != STATE_NOCHANGE) {
-    ESP_LOGI(TAG, "onPacketRecv: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
+    ESP_LOGD(TAG, "onPacketRecv: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
 
     if (new_state == STATE_IDLE) {
       if (*onIdle != NULL) onIdle();
