@@ -139,3 +139,51 @@ TEST_CASE("test server", "[server]") {
   // end of transfer, should have gone back to idle
   TEST_ASSERT_EQUAL(MtftpServer::STATE_IDLE, server.getState());
 }
+
+TEST_CASE("test server behavior when receive an ACK for non-latest block", "[server]") {
+  const uint16_t SAMPLE_FILE_INDEX = 123;
+  const uint32_t SAMPLE_FILE_OFFSET = 0;
+
+  const uint8_t transfer_data[CONFIG_LEN_BLOCK] = { 0x01, 0x02, 0x03, 0x04 };
+  memcpy(SAMPLE_DATA, transfer_data, CONFIG_LEN_BLOCK);
+  LEN_SAMPLE_DATA = CONFIG_LEN_BLOCK;
+
+  initTestTracking();
+
+  MtftpServer server;
+  server.init(&readFile, &sendPacket);
+
+  packet_rrq_t pkt_rrq;
+  recv_result_t result;
+
+  pkt_rrq.file_index = SAMPLE_FILE_INDEX;
+  pkt_rrq.file_offset = SAMPLE_FILE_OFFSET;
+  pkt_rrq.window_size = CONFIG_WINDOW_SIZE;
+
+  server.onPacketRecv((uint8_t *) &pkt_rrq, sizeof(pkt_rrq));
+
+  for (uint8_t block_no = 0; block_no < CONFIG_WINDOW_SIZE; block_no ++) {
+    server.loop();
+  }
+
+  // pretend the second last packet was lost, so ACK received for the third last packet
+  packet_ack_t pkt_ack;
+  pkt_ack.block_no = CONFIG_WINDOW_SIZE - 3;
+
+  result = server.onPacketRecv((uint8_t *) &pkt_ack, sizeof(pkt_ack));
+  TEST_ASSERT_EQUAL(RECV_OK, result);
+
+  STORE_READFILE();
+  STORE_SENDPACKET();
+
+  server.loop();
+
+  TEST_ASSERT_EQUAL(1, GET_READFILE());
+  TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
+
+  // check that readFile was called with the correct offset
+  // + 1 because pkt_ack.block_no is the last valid received, so load next one
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + ((pkt_ack.block_no + 1) * CONFIG_LEN_BLOCK), readFileStats.file_offset);
+
+  TEST_ASSERT_EQUAL(TYPE_DATA, ((packet_data_t *) sendPacketStats.data)->opcode);
+}
