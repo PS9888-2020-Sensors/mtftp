@@ -20,7 +20,7 @@ struct {
   uint16_t btw;
 } writeFileStats;
 
-bool writeFile(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) {
+static bool writeFile(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) {
   writeFileStats.called ++;
   writeFileStats.file_index = file_index;
   writeFileStats.file_offset = file_offset;
@@ -37,13 +37,13 @@ struct {
   uint8_t len;
 } sendPacketStats;
 
-void sendPacket(const uint8_t *data, uint8_t len) {
+static void sendPacket(const uint8_t *data, uint8_t len) {
   sendPacketStats.called ++;
   memcpy(sendPacketStats.data, data, len);
   sendPacketStats.len = len;
 }
 
-void initTestTracking(void) {
+static void initTestTracking(void) {
   memset(&writeFileStats, 0, sizeof(writeFileStats));
   memset(&sendPacketStats, 0, sizeof(sendPacketStats));
 }
