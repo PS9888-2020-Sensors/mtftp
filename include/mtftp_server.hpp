@@ -29,6 +29,7 @@ class MtftpServer {
     recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
     void loop(void);
 
+    server_state getState(void) { return state; };
     bool isIdle(void) { return state == STATE_IDLE; };
   private:
     enum server_state state;

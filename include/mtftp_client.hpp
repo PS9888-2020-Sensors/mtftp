@@ -30,6 +30,7 @@ class MtftpClient {
     recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
     void beginRead(uint16_t file_index, uint32_t file_offset);
     void loop(void);
+    client_state getState(void) { return state; };
   private:
     enum client_state state;
 
