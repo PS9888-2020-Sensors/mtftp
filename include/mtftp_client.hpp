@@ -46,11 +46,11 @@ class MtftpClient {
       int64_t time_last_packet = 0;
     } transfer_params;
 
-    bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw);
-    void (*sendPacket)(const uint8_t *data, uint8_t len);
-    void (*onIdle)();
-    void (*onTimeout)();
-    void (*onTransferEnd)();
+    bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) = NULL;
+    void (*sendPacket)(const uint8_t *data, uint8_t len) = NULL;
+    void (*onIdle)() = NULL;
+    void (*onTimeout)() = NULL;
+    void (*onTransferEnd)() = NULL;
 };
 
 #endif
