@@ -1,56 +1,8 @@
 #include <string.h>
 #include "unity.h"
+#include "helpers.h"
 #include "mtftp.h"
 #include "mtftp_server.hpp"
-
-const uint8_t MAX_LEN_PACKET = 250;
-
-#define STORE_SENDPACKET() (sendPacketStats.beforeCalled = sendPacketStats.called)
-#define GET_SENDPACKET() (sendPacketStats.called - sendPacketStats.beforeCalled)
-
-#define STORE_READFILE() (readFileStats.beforeCalled = readFileStats.called)
-#define GET_READFILE() (readFileStats.called - readFileStats.beforeCalled)
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint16_t file_index;
-  uint32_t file_offset;
-  uint16_t btr;
-} readFileStats;
-
-uint8_t SAMPLE_DATA[CONFIG_LEN_BLOCK];
-uint8_t LEN_SAMPLE_DATA;
-
-static bool readFile(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br) {
-  readFileStats.called ++;
-  readFileStats.file_index = file_index;
-  readFileStats.file_offset = file_offset;
-  readFileStats.btr = btr;
-
-  *br = LEN_SAMPLE_DATA;
-  memcpy(data, SAMPLE_DATA, *br);
-
-  return true;
-}
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint8_t data[MAX_LEN_PACKET];
-  uint8_t len;
-} sendPacketStats;
-
-static void sendPacket(const uint8_t *data, uint8_t len) {
-  sendPacketStats.called ++;
-  memcpy(sendPacketStats.data, data, len);
-  sendPacketStats.len = len;
-}
-
-static void initTestTracking(void) {
-  memset(&readFileStats, 0, sizeof(readFileStats));
-  memset(&sendPacketStats, 0, sizeof(sendPacketStats));
-}
 
 TEST_CASE("test server", "[server]") {
   const uint16_t SAMPLE_FILE_INDEX = 123;
@@ -88,11 +40,11 @@ TEST_CASE("test server", "[server]") {
     TEST_ASSERT_EQUAL_MESSAGE(1, GET_READFILE(), "readFile should be called once");
     TEST_ASSERT_EQUAL_MESSAGE(1, GET_SENDPACKET(), "sendPacket should be called once");
 
-    TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFileStats.file_index);
-    TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (block_no * CONFIG_LEN_BLOCK), readFileStats.file_offset);
-    TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, readFileStats.btr);
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFile_stats.file_index);
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (block_no * CONFIG_LEN_BLOCK), readFile_stats.file_offset);
+    TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, readFile_stats.btr);
 
-    packet_data_t *pkt_data = (packet_data_t *) sendPacketStats.data;
+    packet_data_t *pkt_data = (packet_data_t *) sendPacket_stats.data;
     TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
     TEST_ASSERT_EQUAL(block_no, pkt_data->block_no);
     TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
@@ -118,12 +70,12 @@ TEST_CASE("test server", "[server]") {
   TEST_ASSERT_EQUAL(1, GET_READFILE());
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
 
-  TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFileStats.file_index);
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFile_stats.file_index);
 
   // already sent 4 blocks of data, read the next one
-  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (4 * CONFIG_LEN_BLOCK), readFileStats.file_offset);
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (4 * CONFIG_LEN_BLOCK), readFile_stats.file_offset);
 
-  packet_data_t *pkt_data = (packet_data_t *) sendPacketStats.data;
+  packet_data_t *pkt_data = (packet_data_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
   TEST_ASSERT_EQUAL(0, pkt_data->block_no);
   TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
@@ -183,7 +135,7 @@ TEST_CASE("test server behavior when receive an ACK for non-latest block", "[ser
 
   // check that readFile was called with the correct offset
   // + 1 because pkt_ack.block_no is the last valid received, so load next one
-  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + ((pkt_ack.block_no + 1) * CONFIG_LEN_BLOCK), readFileStats.file_offset);
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + ((pkt_ack.block_no + 1) * CONFIG_LEN_BLOCK), readFile_stats.file_offset);
 
-  TEST_ASSERT_EQUAL(TYPE_DATA, ((packet_data_t *) sendPacketStats.data)->opcode);
+  TEST_ASSERT_EQUAL(TYPE_DATA, ((packet_data_t *) sendPacket_stats.data)->opcode);
 }
