@@ -23,14 +23,22 @@ Four types of packets are defined:
     uint16_t block_no;
     uint8_t block[CONFIG_LEN_BLOCK];
     ```
-3. Acknowledgement (ACK)
+3. Retransmit (RTX)
+
+    Contains a list of block numbers that should be re-sent by the server
+    ```
+    enum packet_types opcode:8;
+    uint8_t num_elements;
+    uint16_t block_nos[LEN_RETRANSMIT];
+    ```
+4. Acknowledgement (ACK)
 
     Used to acknowledge the successful receipt of a window (or partial window)
     ```
     enum packet_types opcode:8;
     uint16_t block_no;
     ```
-4. Error (ERR)
+5. Error (ERR)
 
     Used to indicate an error has occured
     ```
@@ -44,7 +52,20 @@ Four types of packets are defined:
 2. __Server__
     Sends `window size` DATA packets, numbered `0` to `window size - 1`. The end of file is indicated by sending a DATA packet with less than `CONFIG_LEN_BLOCK` bytes of data (or 0 bytes, if the file length is a multiple of `CONFIG_LEN_BLOCK`)
 3. __Client__
-    - Receives the DATA packets, keeping track of the block number of DATA packets received to ensure that data is received in-order and complete. Stores the largest correct block number received.
-    - Once a DATA packet with less than `CONFIG_LEN_BLOCK` bytes of data is received OR `window size` DATA packets are received, send ACK with the largest correct block number received
+    - Receives the DATA packets, keeping track of the block number of DATA packets received to ensure that data is received in-order and complete.
+    - If a block is missing (eg receive block `0, 1, 3` <- block 2 is missing), the buffer base is set to the first missing block (2 in this case) and all future blocks are buffered
+        - buffer looks like this: (`CLB` representing `CONFIG_LEN_BLOCK`)
+        ```
+        offset  block
+             0      2
+           CLB      3
+         2*CLB      4
+         3*CLB      5
+        ```
+        - TODO: what happens if `len(blocks to buffer)` > `len(buffer)`? One solution is probably to retransmit, then ACK at the largest buffered block
+    - Once a DATA packet with less than `CONFIG_LEN_BLOCK` bytes of data is received OR `window size` DATA packets are received, either:
+        1. Send ACK with the largest correct block number received if no blocks are missing
+        2. If one or more blocks are missing, send a RTX packet with the block nos of missing blocks
 4. __Server__
-    Increment file offset based on the ACK packet received. If no more data is available from the file, the transmission is complete, else, go to Step 2
+    - If an ACK is received: increment file offset based on the ACK packet received. If no more data is available from the file, the transmission is complete, else, go to Step 2
+    - If an RTX is received: send the requested blocks, go to Step 3
