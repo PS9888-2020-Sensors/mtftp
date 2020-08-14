@@ -1,52 +1,8 @@
 #include <string.h>
 #include "unity.h"
+#include "helpers.h"
 #include "mtftp.h"
 #include "mtftp_client.hpp"
-
-const uint8_t MAX_LEN_PACKET = 250;
-
-#define STORE_SENDPACKET() (sendPacketStats.beforeCalled = sendPacketStats.called)
-#define GET_SENDPACKET() (sendPacketStats.called - sendPacketStats.beforeCalled)
-
-#define STORE_WRITEFILE() (writeFileStats.beforeCalled = writeFileStats.called)
-#define GET_WRITEFILE() (writeFileStats.called - writeFileStats.beforeCalled)
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint16_t file_index;
-  uint32_t file_offset;
-  uint8_t data[CONFIG_LEN_BLOCK];
-  uint16_t btw;
-} writeFileStats;
-
-static bool writeFile(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) {
-  writeFileStats.called ++;
-  writeFileStats.file_index = file_index;
-  writeFileStats.file_offset = file_offset;
-  memcpy(writeFileStats.data, data, btw);
-  writeFileStats.btw = btw;
-
-  return true;
-}
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint8_t data[MAX_LEN_PACKET];
-  uint8_t len;
-} sendPacketStats;
-
-static void sendPacket(const uint8_t *data, uint8_t len) {
-  sendPacketStats.called ++;
-  memcpy(sendPacketStats.data, data, len);
-  sendPacketStats.len = len;
-}
-
-static void initTestTracking(void) {
-  memset(&writeFileStats, 0, sizeof(writeFileStats));
-  memset(&sendPacketStats, 0, sizeof(sendPacketStats));
-}
 
 TEST_CASE("test client", "[client]") {
   const uint16_t SAMPLE_FILE_INDEX = 123;
@@ -62,9 +18,9 @@ TEST_CASE("test client", "[client]") {
   client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET);
 
   TEST_ASSERT_EQUAL_MESSAGE(1, GET_SENDPACKET(), "sendPacket should be called once");
-  TEST_ASSERT_EQUAL(sizeof(packet_rrq_t), sendPacketStats.len);
+  TEST_ASSERT_EQUAL(sizeof(packet_rrq_t), sendPacket_stats.len);
 
-  packet_rrq_t *pkt_rrq = (packet_rrq_t *) sendPacketStats.data;
+  packet_rrq_t *pkt_rrq = (packet_rrq_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_READ_REQUEST, pkt_rrq->opcode);
   TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, pkt_rrq->file_index);
   TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET, pkt_rrq->file_offset);
@@ -86,19 +42,19 @@ TEST_CASE("test client", "[client]") {
     result = client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
     TEST_ASSERT_EQUAL(RECV_OK, result);
     TEST_ASSERT_EQUAL_MESSAGE(1, GET_WRITEFILE(), "writeFile should be called once");
-    TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFileStats.data, CONFIG_LEN_BLOCK);
-    TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, writeFileStats.file_index);
-    TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (block_no * CONFIG_LEN_BLOCK), writeFileStats.file_offset);
-    TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, writeFileStats.btw);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFile_stats.data, CONFIG_LEN_BLOCK);
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, writeFile_stats.file_index);
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (block_no * CONFIG_LEN_BLOCK), writeFile_stats.file_offset);
+    TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, writeFile_stats.btw);
   }
 
   // at this point, a full window has been transmitted
   // so should acknowledge the window with the server
   TEST_ASSERT_EQUAL(MtftpClient::STATE_ACK_SENT, client.getState());
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
-  TEST_ASSERT_EQUAL(sizeof(packet_ack_t), sendPacketStats.len);
+  TEST_ASSERT_EQUAL(sizeof(packet_ack_t), sendPacket_stats.len);
 
-  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacketStats.data;
+  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
   TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE - 1, pkt_ack->block_no);
 
@@ -110,8 +66,8 @@ TEST_CASE("test client", "[client]") {
   result = client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + len_data);
   TEST_ASSERT_EQUAL(RECV_OK, result);
   TEST_ASSERT_EQUAL(1, GET_WRITEFILE());
-  TEST_ASSERT_EQUAL(len_data, writeFileStats.btw);
-  TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFileStats.data, len_data);
+  TEST_ASSERT_EQUAL(len_data, writeFile_stats.btw);
+  TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFile_stats.data, len_data);
 
   // transfer should have ended
   TEST_ASSERT_EQUAL(MtftpClient::STATE_IDLE, client.getState());
@@ -149,9 +105,9 @@ TEST_CASE("test client behavior when missing data packets", "[client]") {
   // we should expect an ACK for CONFIG_WINDOW_SIZE - 3
   TEST_ASSERT_EQUAL(MtftpClient::STATE_ACK_SENT, client.getState());
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
-  TEST_ASSERT_EQUAL(sizeof(packet_ack_t), sendPacketStats.len);
+  TEST_ASSERT_EQUAL(sizeof(packet_ack_t), sendPacket_stats.len);
 
-  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacketStats.data;
+  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
   TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE - 3, pkt_ack->block_no);
 }
