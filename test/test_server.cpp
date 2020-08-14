@@ -120,8 +120,8 @@ TEST_CASE("test server", "[server]") {
 
   TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFileStats.file_index);
 
-  // already sent 4 blocks of data, read the next one
-  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (4 * CONFIG_LEN_BLOCK), readFileStats.file_offset);
+  // already sent CONFIG_WINDOW_SIZE blocks of data, read the next one
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (CONFIG_WINDOW_SIZE * CONFIG_LEN_BLOCK), readFileStats.file_offset);
 
   packet_data_t *pkt_data = (packet_data_t *) sendPacketStats.data;
   TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
