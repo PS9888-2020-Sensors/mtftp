@@ -1,62 +1,16 @@
 #include <string.h>
 #include "unity.h"
+#include "helpers.h"
 #include "mtftp.h"
 #include "mtftp_client.hpp"
+#include "mtftp_server.hpp"
 
-const uint8_t MAX_LEN_PACKET = 250;
-
-#define STORE_SENDPACKET() (sendPacketStats.beforeCalled = sendPacketStats.called)
-#define GET_SENDPACKET() (sendPacketStats.called - sendPacketStats.beforeCalled)
-
-#define STORE_WRITEFILE() (writeFileStats.beforeCalled = writeFileStats.called)
-#define GET_WRITEFILE() (writeFileStats.called - writeFileStats.beforeCalled)
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint16_t file_index;
-  uint32_t file_offset;
-  // allocate enough space to contain the entire block buffer if we need to
-  // since theres a possibility that a large, multi block write will happen
-  uint8_t data[CONFIG_LEN_MTFTP_BUFFER * CONFIG_LEN_BLOCK];
-  uint16_t btw;
-} writeFileStats;
-
-static bool writeFile(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) {
-  writeFileStats.called ++;
-  writeFileStats.file_index = file_index;
-  writeFileStats.file_offset = file_offset;
-  memcpy(writeFileStats.data, data, btw);
-  writeFileStats.btw = btw;
-
-  return true;
-}
-
-struct {
-  uint8_t beforeCalled;
-  uint8_t called;
-  uint8_t data[MAX_LEN_PACKET];
-  uint8_t len;
-} sendPacketStats;
-
-static void sendPacket(const uint8_t *data, uint8_t len) {
-  sendPacketStats.called ++;
-  memcpy(sendPacketStats.data, data, len);
-  sendPacketStats.len = len;
-}
-
-static void initTestTracking(void) {
-  memset(&writeFileStats, 0, sizeof(writeFileStats));
-  memset(&sendPacketStats, 0, sizeof(sendPacketStats));
-}
-
-TEST_CASE("test retransmit behavior", "[client]") {
-  // test may misbehave if CONFIG_WINDOW_SIZE is too small
-
-  TEST_ASSERT_GREATER_THAN(7, CONFIG_WINDOW_SIZE);
+TEST_CASE("test client retransmit behavior", "[client]") {
   const uint16_t SAMPLE_FILE_INDEX = 123;
   const uint32_t SAMPLE_FILE_OFFSET = 0;
   const uint8_t SAMPLE_DATA[CONFIG_LEN_BLOCK] = { 0x01, 0x02, 0x03, 0x04 };
+
+  const uint8_t WINDOW_SIZE = 8;
 
   initTestTracking();
 
@@ -71,10 +25,10 @@ TEST_CASE("test retransmit behavior", "[client]") {
   STORE_SENDPACKET();
   STORE_WRITEFILE();
 
-  // send CONFIG_WINDOW_SIZE blocks
-  for (uint8_t block_no = 0; block_no < CONFIG_WINDOW_SIZE; block_no++) {
+  // send WINDOW_SIZE blocks
+  for (uint8_t block_no = 0; block_no < WINDOW_SIZE; block_no++) {
     // simulate loss of data block
-    if (block_no == (CONFIG_WINDOW_SIZE - 4)) {
+    if (block_no == (WINDOW_SIZE - 4)) {
       continue;
     }
 
@@ -84,49 +38,50 @@ TEST_CASE("test retransmit behavior", "[client]") {
     client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
   }
 
-  // at this point, since we lost block_no CONFIG_WINDOW_SIZE - 4,
-  // we should expect an RTX for 1 item, block_no CONFIG_WINDOW_SIZE - 4
+  // at this point, since we lost block_no WINDOW_SIZE - 4,
+  // we should expect an RTX for 1 item, block_no WINDOW_SIZE - 4
   TEST_ASSERT_EQUAL(MtftpClient::STATE_AWAIT_RTX, client.getState());
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
 
-  // we should only have CONFIG_WINDOW_SIZE - 4 blocks written,
-  // since block_no=CONFIG_WINDOW_SIZE - 4 was lost and the blocks after are buffered
-  TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE - 4, GET_WRITEFILE());
+  // we should only have WINDOW_SIZE - 4 blocks written,
+  // since block_no=WINDOW_SIZE - 4 was lost and the blocks after are buffered
+  TEST_ASSERT_EQUAL(WINDOW_SIZE - 4, GET_WRITEFILE());
 
-  packet_rtx_t *pkt_rtx = (packet_rtx_t *) sendPacketStats.data;
+  packet_rtx_t *pkt_rtx = (packet_rtx_t *) sendPacket_stats.data;
 
   TEST_ASSERT_EQUAL(TYPE_RETRANSMIT, pkt_rtx->opcode);
   // expect that only one block_no would have been sent in the rtx packet
   TEST_ASSERT_EQUAL(1, pkt_rtx->num_elements);
   // check that the overall length of the packet tallies
-  TEST_ASSERT_EQUAL(LEN_RTX_HEADER + (pkt_rtx->num_elements * sizeof(uint16_t)), sendPacketStats.len);
+  TEST_ASSERT_EQUAL(LEN_RTX_HEADER + (pkt_rtx->num_elements * sizeof(uint16_t)), sendPacket_stats.len);
   // check that the block requested for retransmission is correct 
-  TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE - 4, pkt_rtx->block_nos[0]);
+  TEST_ASSERT_EQUAL(WINDOW_SIZE - 4, pkt_rtx->block_nos[0]);
 
   STORE_SENDPACKET();
   STORE_WRITEFILE();
 
   // send the client the missing block it just requested
-  pkt_data.block_no = CONFIG_WINDOW_SIZE - 4;
-  pkt_data.block[0] = CONFIG_WINDOW_SIZE - 4;
+  pkt_data.block_no = WINDOW_SIZE - 4;
+  pkt_data.block[0] = WINDOW_SIZE - 4;
+
   client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
 
   TEST_ASSERT_EQUAL(MtftpClient::STATE_ACK_SENT, client.getState());
 
   // the buffer should have just been written to file
   TEST_ASSERT_EQUAL(1, GET_WRITEFILE());
-  // block_no=CONFIG_WINDOW_SIZE - 4 to CONFIG_WINDOW_SIZE should just have been written
-  TEST_ASSERT_EQUAL(4 * CONFIG_LEN_BLOCK, writeFileStats.btw);
+  // block_no=WINDOW_SIZE - 4 to WINDOW_SIZE should just have been written
+  TEST_ASSERT_EQUAL(4 * CONFIG_LEN_BLOCK, writeFile_stats.btw);
 
-  uint16_t block_offset = 0;
-  for(uint16_t block_no = CONFIG_WINDOW_SIZE - 4; block_no < CONFIG_WINDOW_SIZE; block_no ++) {
-    TEST_ASSERT_EQUAL(block_no, writeFileStats.data[(block_offset++) * CONFIG_LEN_BLOCK]);
+  uint8_t block_offset = 0;
+  for(uint8_t block_no = WINDOW_SIZE - 4; block_no < WINDOW_SIZE; block_no ++) {
+    TEST_ASSERT_EQUAL(block_no, writeFile_stats.data[(block_offset ++) * CONFIG_LEN_BLOCK]);
   }
 
-  // an ACK should have been sent for block CONFIG_WINDOW_SIZE - 1
+  // an ACK should have been sent for block WINDOW_SIZE - 1
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
 
-  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacketStats.data;
+  packet_ack_t *pkt_ack = (packet_ack_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
-  TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE - 1, pkt_ack->block_no);
+  TEST_ASSERT_EQUAL(WINDOW_SIZE - 1, pkt_ack->block_no);
 }
