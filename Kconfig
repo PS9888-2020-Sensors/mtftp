@@ -17,4 +17,10 @@ config TIMEOUT
     range 1 10000000
     help
     System times out after time in microseconds
+config LEN_MTFTP_BUFFER
+    int "Buffer Size"
+    default 64
+    range 1 128
+    help
+    Number of blocks to buffer on the client in the event of missing data packets
 endmenu
