@@ -51,7 +51,7 @@ TEST_CASE("test server", "[server]") {
   }
 
   // wait for acknowledgement
-  TEST_ASSERT_EQUAL(MtftpServer::STATE_WAIT_ACK, server.getState());
+  TEST_ASSERT_EQUAL(MtftpServer::STATE_AWAIT_RESPONSE, server.getState());
 
   packet_ack_t pkt_ack;
   pkt_ack.block_no = CONFIG_WINDOW_SIZE - 1;
@@ -81,7 +81,7 @@ TEST_CASE("test server", "[server]") {
   TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
 
   // acknowledge the single partial block just sent
-  TEST_ASSERT_EQUAL(MtftpServer::STATE_WAIT_ACK, server.getState());
+  TEST_ASSERT_EQUAL(MtftpServer::STATE_AWAIT_RESPONSE, server.getState());
 
   pkt_ack.block_no = 0;
 

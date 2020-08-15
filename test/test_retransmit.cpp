@@ -85,3 +85,94 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
   TEST_ASSERT_EQUAL(WINDOW_SIZE - 1, pkt_ack->block_no);
 }
+
+TEST_CASE("test server retransmit behavior", "[server]") {
+  const uint16_t SAMPLE_FILE_INDEX = 123;
+  const uint32_t SAMPLE_FILE_OFFSET = 0;
+
+  const uint8_t WINDOW_SIZE = 8;
+
+  const uint8_t transfer_data[CONFIG_LEN_BLOCK] = { 0x01, 0x02, 0x03, 0x04 };
+  memcpy(SAMPLE_DATA, transfer_data, CONFIG_LEN_BLOCK);
+  LEN_SAMPLE_DATA = CONFIG_LEN_BLOCK;
+
+  initTestTracking();
+
+  MtftpServer server;
+  server.init(&readFile, &sendPacket);
+
+  packet_rrq_t pkt_rrq;
+  pkt_rrq.file_index = SAMPLE_FILE_INDEX;
+  pkt_rrq.file_offset = SAMPLE_FILE_OFFSET;
+  pkt_rrq.window_size = WINDOW_SIZE;
+  server.onPacketRecv((uint8_t *) &pkt_rrq, sizeof(pkt_rrq));
+
+  for(uint8_t i = 0; i < WINDOW_SIZE; i++) {
+    server.loop();
+  }
+
+  TEST_ASSERT_EQUAL(MtftpServer::STATE_AWAIT_RESPONSE, server.getState());
+
+  const uint8_t missing_blocks[] = {3, 5};
+
+  // issue rtx for block 3 and 5
+  packet_rtx_t pkt_rtx;
+  pkt_rtx.num_elements = 2;
+  pkt_rtx.block_nos[0] = missing_blocks[0];
+  pkt_rtx.block_nos[1] = missing_blocks[1];
+
+  recv_result_t result;
+
+  result = server.onPacketRecv((uint8_t *) &pkt_rtx, LEN_RTX_HEADER + (pkt_rtx.num_elements * sizeof(uint16_t)));
+  TEST_ASSERT_EQUAL(RECV_OK, result);
+
+  // check to ensure that the correct blocks are transmitted
+  for (uint8_t i = 0; i < sizeof(missing_blocks) / sizeof(missing_blocks[0]); i++) {
+    uint8_t block_no = missing_blocks[i];
+
+    STORE_READFILE();
+    STORE_SENDPACKET();
+
+    server.loop();
+    TEST_ASSERT_EQUAL(1, GET_READFILE());
+    TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
+
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFile_stats.file_index);
+    TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (block_no * CONFIG_LEN_BLOCK), readFile_stats.file_offset);
+    TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, readFile_stats.btr);
+
+    packet_data_t *pkt_data = (packet_data_t *) sendPacket_stats.data;
+    TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
+    TEST_ASSERT_EQUAL(block_no, pkt_data->block_no);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
+  }
+
+  TEST_ASSERT_EQUAL(MtftpServer::STATE_AWAIT_RESPONSE, server.getState());
+
+  packet_ack_t pkt_ack;
+
+  pkt_ack.block_no = WINDOW_SIZE - 1;
+
+  result = server.onPacketRecv((uint8_t *) &pkt_ack, sizeof(packet_ack_t));
+  TEST_ASSERT_EQUAL(RECV_OK, result);
+
+  STORE_READFILE();
+  STORE_SENDPACKET();
+
+  LEN_SAMPLE_DATA --;
+
+  server.loop();
+
+  TEST_ASSERT_EQUAL(1, GET_READFILE());
+  TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
+
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, readFile_stats.file_index);
+  TEST_ASSERT_EQUAL(SAMPLE_FILE_OFFSET + (WINDOW_SIZE * CONFIG_LEN_BLOCK), readFile_stats.file_offset);
+  TEST_ASSERT_EQUAL(CONFIG_LEN_BLOCK, readFile_stats.btr);
+
+  packet_data_t *pkt_data = (packet_data_t *) sendPacket_stats.data;
+  TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
+  TEST_ASSERT_EQUAL(0, pkt_data->block_no);
+  TEST_ASSERT_EQUAL(LEN_DATA_HEADER + CONFIG_LEN_BLOCK - 1, sendPacket_stats.len);
+  TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
+}
