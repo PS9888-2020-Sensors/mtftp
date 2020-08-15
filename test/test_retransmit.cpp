@@ -84,6 +84,22 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   packet_ack_t *pkt_ack = (packet_ack_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
   TEST_ASSERT_EQUAL(WINDOW_SIZE - 1, pkt_ack->block_no);
+
+  STORE_SENDPACKET();
+
+  // client receives a partial block here
+  pkt_data.block_no = 0;
+  pkt_data.block[0] = 0;
+  client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK - 1);
+
+  TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
+
+  // client should have sent out an ACK to mark the end of the window
+  pkt_ack = (packet_ack_t *) sendPacket_stats.data;
+  TEST_ASSERT_EQUAL(TYPE_ACK, pkt_ack->opcode);
+  TEST_ASSERT_EQUAL(0, pkt_ack->block_no);
+
+  TEST_ASSERT_EQUAL(MtftpClient::STATE_IDLE, client.getState());
 }
 
 TEST_CASE("test server retransmit behavior", "[server]") {
@@ -147,6 +163,8 @@ TEST_CASE("test server retransmit behavior", "[server]") {
     TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
   }
 
+  // server has retransmitted the missing packets, expecting another RTX/ACK
+
   TEST_ASSERT_EQUAL(MtftpServer::STATE_AWAIT_RESPONSE, server.getState());
 
   packet_ack_t pkt_ack;
@@ -156,9 +174,13 @@ TEST_CASE("test server retransmit behavior", "[server]") {
   result = server.onPacketRecv((uint8_t *) &pkt_ack, sizeof(packet_ack_t));
   TEST_ASSERT_EQUAL(RECV_OK, result);
 
+  // since server has received an ACK for the full window,
+  // it should send the next block of data
+
   STORE_READFILE();
   STORE_SENDPACKET();
 
+  // server send a partial block
   LEN_SAMPLE_DATA --;
 
   server.loop();
@@ -173,6 +195,14 @@ TEST_CASE("test server retransmit behavior", "[server]") {
   packet_data_t *pkt_data = (packet_data_t *) sendPacket_stats.data;
   TEST_ASSERT_EQUAL(TYPE_DATA, pkt_data->opcode);
   TEST_ASSERT_EQUAL(0, pkt_data->block_no);
-  TEST_ASSERT_EQUAL(LEN_DATA_HEADER + CONFIG_LEN_BLOCK - 1, sendPacket_stats.len);
+  TEST_ASSERT_EQUAL(LEN_DATA_HEADER + LEN_SAMPLE_DATA, sendPacket_stats.len);
   TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, &(pkt_data->block), LEN_SAMPLE_DATA);
+
+  // server receives an ACK for block 0
+
+  pkt_ack.block_no = 0;
+  result = server.onPacketRecv((uint8_t *) &pkt_ack, sizeof(packet_ack_t));
+  TEST_ASSERT_EQUAL(RECV_OK, result);
+
+  TEST_ASSERT_EQUAL(MtftpServer::STATE_IDLE, server.getState());
 }
