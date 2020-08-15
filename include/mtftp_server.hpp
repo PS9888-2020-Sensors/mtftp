@@ -52,10 +52,10 @@ class MtftpServer {
       uint16_t rtx_block_nos[CONFIG_LEN_MTFTP_BUFFER];
     } transfer_params;
 
-    bool (*readFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br);
-    void (*sendPacket)(const uint8_t *data, uint8_t len);
-    void (*onIdle)();
-    void (*onTimeout)();
+    bool (*readFile)(uint16_t file_index, uint32_t file_offset, uint8_t *data, uint16_t btr, uint16_t *br) = NULL;
+    void (*sendPacket)(const uint8_t *data, uint8_t len) = NULL;
+    void (*onIdle)() = NULL;
+    void (*onTimeout)() = NULL;
 
     void onWindowStart(void);
     bool sendBlock(uint16_t block_no, uint16_t *bytes_read);
