@@ -16,7 +16,7 @@ class MtftpServer {
     const char *server_state_str[STATE_NOCHANGE + 1] = {
       "Idle",
       "Transfer",
-      "Retransmit"
+      "Retransmit",
       "WaitAck",
       "NoChange"
     };
