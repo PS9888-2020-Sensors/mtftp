@@ -25,7 +25,8 @@ struct writeFile_stats_t {
   uint8_t called;
   uint16_t file_index;
   uint32_t file_offset;
-  uint8_t data[CONFIG_LEN_BLOCK];
+  // allocate enough memory to hold the entire packet buffer if necessary
+  uint8_t data[CONFIG_LEN_MTFTP_BUFFER * CONFIG_LEN_BLOCK];
   uint16_t btw;
 };
 

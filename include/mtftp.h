@@ -6,10 +6,14 @@
 
 // length of header of packet_data (minus length of block)
 const uint8_t LEN_DATA_HEADER = 3;
+const uint8_t LEN_RTX_HEADER = 2;
+// max number of block nos that can be sent in a TYPE_RETRANSMIT packet
+const uint8_t LEN_RETRANSMIT = (250 - 2) / sizeof(uint16_t);
 
 enum packet_types {
   TYPE_READ_REQUEST = 1,
   TYPE_DATA,
+  TYPE_RETRANSMIT,
   TYPE_ACK,
   TYPE_ERR
 };
@@ -39,6 +43,14 @@ typedef struct __attribute__((__packed__)) packet_data {
 
   packet_data(): opcode(TYPE_DATA) {}
 } packet_data_t;
+
+typedef struct __attribute__((__packed__)) packet_rtx {
+  enum packet_types opcode:8;
+  uint8_t num_elements;
+  uint16_t block_nos[LEN_RETRANSMIT];
+
+  packet_rtx(): opcode(TYPE_RETRANSMIT) {}
+} packet_rtx_t;
 
 typedef struct __attribute__((__packed__)) packet_ack {
   enum packet_types opcode:8;
