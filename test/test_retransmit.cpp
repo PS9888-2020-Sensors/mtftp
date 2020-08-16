@@ -25,7 +25,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   STORE_SENDPACKET();
   STORE_WRITEFILE();
 
-  // send WINDOW_SIZE blocks
+  // receive WINDOW_SIZE blocks
   for (uint8_t block_no = 0; block_no < WINDOW_SIZE; block_no++) {
     // simulate loss of data block
     if (block_no == (WINDOW_SIZE - 4)) {
@@ -100,6 +100,42 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   TEST_ASSERT_EQUAL(0, pkt_ack->block_no);
 
   TEST_ASSERT_EQUAL(MtftpClient::STATE_IDLE, client.getState());
+}
+
+TEST_CASE("test for correct blocks in RTX", "[server]") {
+  const uint16_t SAMPLE_FILE_INDEX = 123;
+  const uint32_t SAMPLE_FILE_OFFSET = 0;
+  const uint8_t SAMPLE_DATA[CONFIG_LEN_BLOCK] = { 0x01, 0x02, 0x03, 0x04 };
+
+  const uint8_t WINDOW_SIZE = 8;
+
+  initTestTracking();
+
+  MtftpClient client;
+  client.init(&writeFile, &sendPacket);
+  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET);
+
+  packet_data_t pkt_data;
+
+  memcpy(&pkt_data.block, SAMPLE_DATA, CONFIG_LEN_BLOCK);
+
+  // receive WINDOW_SIZE blocks
+  for (uint8_t block_no = 0; block_no < WINDOW_SIZE; block_no++) {
+    // simulate loss of data blocks
+    if (block_no == (WINDOW_SIZE - 5) || block_no == (WINDOW_SIZE - 3)) {
+      continue;
+    }
+
+    pkt_data.block_no = block_no;
+    client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
+  }
+
+  // expect that the RTX contains the two lost data blocks
+  packet_rtx_t *pkt_rtx = (packet_rtx_t *) sendPacket_stats.data;
+  TEST_ASSERT_EQUAL(TYPE_RETRANSMIT, pkt_rtx->opcode);
+  TEST_ASSERT_EQUAL(2, pkt_rtx->num_elements);
+  TEST_ASSERT_EQUAL(WINDOW_SIZE - 5, pkt_rtx->block_nos[0]);
+  TEST_ASSERT_EQUAL(WINDOW_SIZE - 3, pkt_rtx->block_nos[1]);
 }
 
 TEST_CASE("test server retransmit behavior", "[server]") {

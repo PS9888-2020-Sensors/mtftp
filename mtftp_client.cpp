@@ -67,6 +67,8 @@ enum MtftpClient::client_state MtftpClient::onWindowEnd(void) {
 
     rtx_pkt.num_elements = transfer_params.num_missing;
 
+    // iterate over the entire missing_block_nos and
+    // copy the non empty (0xFFFF) elements into the RTX packet
     uint16_t local_index = 0;
     for(uint16_t i = 0; i < LEN_RETRANSMIT; i++) {
       if (local_index >= CONFIG_LEN_MTFTP_BUFFER) break;
@@ -79,6 +81,7 @@ enum MtftpClient::client_state MtftpClient::onWindowEnd(void) {
       }
 
       rtx_pkt.block_nos[i] = transfer_params.missing_block_nos[local_index];
+      local_index ++;
     }
 
     ESP_LOGD(TAG, "sending rtx for %d block(s)", rtx_pkt.num_elements);
