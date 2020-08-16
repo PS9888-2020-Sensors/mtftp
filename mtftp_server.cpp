@@ -191,7 +191,7 @@ bool MtftpServer::sendBlock(uint16_t block_no, uint16_t *bytes_read) {
     return false;
   }
 
-  ESP_LOGD(TAG, "sending block %d len=%d", data_pkt.block_no, *bytes_read);
+  ESP_LOGV(TAG, "sending block %d len=%d", data_pkt.block_no, *bytes_read);
 
   sendPacket((uint8_t *) &data_pkt, LEN_DATA_HEADER + *bytes_read);
 

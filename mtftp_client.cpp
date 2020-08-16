@@ -180,7 +180,7 @@ recv_result_t MtftpClient::onPacketRecv(const uint8_t *data, uint16_t len_data) 
       if ((state == STATE_TRANSFER || state == STATE_ACK_SENT) && transfer_params.num_missing == 0) {
         if (data_pkt->block_no == (transfer_params.block_no + 1)) {
           // received the next block with the expected block no
-          ESP_LOGD(TAG, "received block %d with len %d", data_pkt->block_no, len_block);
+          ESP_LOGV(TAG, "received block %d with len %d", data_pkt->block_no, len_block);
           writeFile(
             transfer_params.file_index,
             transfer_params.file_offset,
