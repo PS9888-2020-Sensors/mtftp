@@ -2,6 +2,8 @@
 #define MTFTP_CLIENT_H
 
 #include "mtftp.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/ringbuf.h"
 
 class MtftpClient {
   public:
@@ -32,8 +34,8 @@ class MtftpClient {
     void setOnIdleCb(void (*_onIdle)());
     void setOnTimeoutCb(void (*_onTimeout)());
     void setOnTransferEndCb(void (*_onTransferEnd)());
-    recv_result_t onPacketRecv(const uint8_t *data, uint16_t len_data);
-    void beginRead(uint16_t file_index, uint32_t file_offset);
+    void onPacketRecv(const uint8_t *data, uint16_t len_data);
+    void beginRead(uint16_t file_index, uint32_t file_offset, uint8_t window_size);
     void loop(void);
     client_state getState(void) { return state; };
   private:
@@ -44,14 +46,12 @@ class MtftpClient {
       uint32_t file_offset;
 
       uint16_t window_size;
-      
+
       // int32_t to represent -1 to 65535
       // stores the block no of the last successfully received block
       int32_t block_no;
       int32_t largest_block_no;
       uint8_t len_largest_block;
-
-      int64_t time_last_packet = 0;
 
       // block number of the first block in the buffer
       int32_t buffer_base_block_no;
@@ -59,7 +59,9 @@ class MtftpClient {
       uint8_t num_missing;
       // 0xFFFF for unused slot, no where near enough memory to buffer 65535 blocks
       uint16_t missing_block_nos[CONFIG_LEN_MTFTP_BUFFER];
-    } transfer_params;
+
+      RingbufHandle_t packet_buffer;
+    } params;
 
     bool (*writeFile)(uint16_t file_index, uint32_t file_offset, const uint8_t *data, uint16_t btw) = NULL;
     void (*sendPacket)(const uint8_t *data, uint8_t len) = NULL;
