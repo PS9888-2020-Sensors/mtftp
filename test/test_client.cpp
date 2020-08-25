@@ -15,7 +15,7 @@ TEST_CASE("test client", "[client]") {
   client.init(&writeFile, &sendPacket);
 
   STORE_SENDPACKET();
-  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET);
+  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET, CONFIG_WINDOW_SIZE);
 
   TEST_ASSERT_EQUAL_MESSAGE(1, GET_SENDPACKET(), "sendPacket should be called once");
   TEST_ASSERT_EQUAL(sizeof(packet_rrq_t), sendPacket_stats.len);
@@ -27,7 +27,6 @@ TEST_CASE("test client", "[client]") {
   TEST_ASSERT_EQUAL(CONFIG_WINDOW_SIZE, pkt_rrq->window_size);
 
   packet_data_t pkt_data;
-  recv_result_t result;
 
   memcpy(&pkt_data.block, SAMPLE_DATA, CONFIG_LEN_BLOCK);
 
@@ -39,8 +38,8 @@ TEST_CASE("test client", "[client]") {
 
     STORE_WRITEFILE();
 
-    result = client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
-    TEST_ASSERT_EQUAL(RECV_OK, result);
+    client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
+    client.loop();
     TEST_ASSERT_EQUAL_MESSAGE(1, GET_WRITEFILE(), "writeFile should be called once");
     TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFile_stats.data, CONFIG_LEN_BLOCK);
     TEST_ASSERT_EQUAL(SAMPLE_FILE_INDEX, writeFile_stats.file_index);
@@ -63,8 +62,8 @@ TEST_CASE("test client", "[client]") {
   pkt_data.block_no = 0;
 
   STORE_WRITEFILE();
-  result = client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + len_data);
-  TEST_ASSERT_EQUAL(RECV_OK, result);
+  client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + len_data);
+  client.loop();
   TEST_ASSERT_EQUAL(1, GET_WRITEFILE());
   TEST_ASSERT_EQUAL(len_data, writeFile_stats.btw);
   TEST_ASSERT_EQUAL_HEX8_ARRAY(SAMPLE_DATA, writeFile_stats.data, len_data);

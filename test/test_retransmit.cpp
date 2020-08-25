@@ -16,7 +16,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
 
   MtftpClient client;
   client.init(&writeFile, &sendPacket);
-  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET);
+  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET, WINDOW_SIZE);
 
   packet_data_t pkt_data;
 
@@ -36,6 +36,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
     // write block_no into data so we can check for correctness later
     pkt_data.block[0] = block_no;
     client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
+    client.loop();
   }
 
   // at this point, since we lost block_no WINDOW_SIZE - 4,
@@ -54,7 +55,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   TEST_ASSERT_EQUAL(1, pkt_rtx->num_elements);
   // check that the overall length of the packet tallies
   TEST_ASSERT_EQUAL(LEN_RTX_HEADER + (pkt_rtx->num_elements * sizeof(uint16_t)), sendPacket_stats.len);
-  // check that the block requested for retransmission is correct 
+  // check that the block requested for retransmission is correct
   TEST_ASSERT_EQUAL(WINDOW_SIZE - 4, pkt_rtx->block_nos[0]);
 
   STORE_SENDPACKET();
@@ -65,6 +66,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   pkt_data.block[0] = WINDOW_SIZE - 4;
 
   client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
+  client.loop();
 
   TEST_ASSERT_EQUAL(MtftpClient::STATE_ACK_SENT, client.getState());
 
@@ -91,6 +93,7 @@ TEST_CASE("test client retransmit behavior", "[client]") {
   pkt_data.block_no = 0;
   pkt_data.block[0] = 0;
   client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK - 1);
+  client.loop();
 
   TEST_ASSERT_EQUAL(1, GET_SENDPACKET());
 
@@ -113,7 +116,7 @@ TEST_CASE("test for correct blocks in RTX", "[server]") {
 
   MtftpClient client;
   client.init(&writeFile, &sendPacket);
-  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET);
+  client.beginRead(SAMPLE_FILE_INDEX, SAMPLE_FILE_OFFSET, WINDOW_SIZE);
 
   packet_data_t pkt_data;
 
@@ -128,6 +131,7 @@ TEST_CASE("test for correct blocks in RTX", "[server]") {
 
     pkt_data.block_no = block_no;
     client.onPacketRecv((uint8_t *) &pkt_data, LEN_DATA_HEADER + CONFIG_LEN_BLOCK);
+    client.loop();
   }
 
   // expect that the RTX contains the two lost data blocks
