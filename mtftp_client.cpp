@@ -105,8 +105,6 @@ enum MtftpClient::client_state MtftpClient::onWindowEnd(void) {
     // the largest block is not full (final block), nothing buffered, end of transfer
     if (params.len_largest_block < CONFIG_LEN_BLOCK) {
       new_state = STATE_IDLE;
-
-      if (*onTransferEnd != NULL) onTransferEnd();
     } else {
       new_state = STATE_ACK_SENT;
     }
@@ -376,7 +374,8 @@ void MtftpClient::loop(void) {
     time_last_packet = esp_timer_get_time();
   }
 
-  if (state != STATE_IDLE && (esp_timer_get_time() - time_last_packet) > CONFIG_TIMEOUT) {
+  bool timeout = state != STATE_IDLE && (esp_timer_get_time() - time_last_packet) > CONFIG_TIMEOUT;
+  if (timeout) {
     ESP_LOGW(TAG, "timeout!");
 
     // can we send an ACK/RTX here if one hasnt been sent for this window yet?
@@ -387,10 +386,16 @@ void MtftpClient::loop(void) {
   if (new_state != STATE_NOCHANGE) {
     ESP_LOGI(TAG, "loop: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
 
-    if (new_state == STATE_IDLE) {
-      if (*onIdle != NULL) onIdle();
-    }
+    enum client_state prev_state = state;
 
     state = new_state;
+
+    if (new_state == STATE_IDLE) {
+      if (!timeout && (prev_state == STATE_TRANSFER || prev_state == STATE_ACK_SENT)) {
+        if (*onTransferEnd != NULL) onTransferEnd();
+      }
+
+      if (*onIdle != NULL) onIdle();
+    }
   }
 }
