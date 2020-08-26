@@ -372,16 +372,6 @@ void MtftpClient::loop(void) {
     vRingbufferReturnItem(params.packet_buffer, (void *) data);
   }
 
-  if (new_state != STATE_NOCHANGE) {
-    ESP_LOGD(TAG, "state change from %s to %s", client_state_str[state], client_state_str[new_state]);
-
-    if (new_state == STATE_IDLE) {
-      if (*onIdle != NULL) onIdle();
-    }
-
-    state = new_state;
-  }
-
   if (result == RECV_OK) {
     time_last_packet = esp_timer_get_time();
   }
