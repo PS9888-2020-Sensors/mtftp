@@ -136,6 +136,7 @@ void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset, uint8_t w
   params.file_offset = file_offset;
   params.window_size = window_size;
   params.block_no = -1;
+  params.time_last_packet = esp_timer_get_time();
 
   packet_rrq_t rrq_pkt;
 
@@ -153,8 +154,6 @@ void MtftpClient::beginRead(uint16_t file_index, uint32_t file_offset, uint8_t w
 
 void MtftpClient::loop(void) {
   enum client_state new_state = STATE_NOCHANGE;
-
-  static int64_t time_last_packet = 0;
 
   recv_result_t result = RECV_UNSET;
   size_t len_data;
@@ -371,10 +370,10 @@ void MtftpClient::loop(void) {
   }
 
   if (result == RECV_OK) {
-    time_last_packet = esp_timer_get_time();
+    params.time_last_packet = esp_timer_get_time();
   }
 
-  bool timeout = state != STATE_IDLE && (esp_timer_get_time() - time_last_packet) > CONFIG_TIMEOUT;
+  bool timeout = state != STATE_IDLE && (esp_timer_get_time() - params.time_last_packet) > CONFIG_TIMEOUT;
   if (timeout) {
     ESP_LOGW(TAG, "timeout!");
 

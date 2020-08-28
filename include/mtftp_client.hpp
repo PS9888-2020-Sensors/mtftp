@@ -53,6 +53,8 @@ class MtftpClient {
       int32_t largest_block_no;
       uint8_t len_largest_block;
 
+      int64_t time_last_packet = 0;
+
       // block number of the first block in the buffer
       int32_t buffer_base_block_no;
       uint8_t *buffer = NULL;
