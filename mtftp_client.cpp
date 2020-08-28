@@ -376,9 +376,6 @@ void MtftpClient::loop(void) {
   bool timeout = state != STATE_IDLE && (esp_timer_get_time() - params.time_last_packet) > CONFIG_TIMEOUT;
   if (timeout) {
     ESP_LOGW(TAG, "timeout!");
-
-    // can we send an ACK/RTX here if one hasnt been sent for this window yet?
-    if (*onTimeout != NULL) onTimeout();
     new_state = STATE_IDLE;
   }
 
@@ -388,6 +385,10 @@ void MtftpClient::loop(void) {
     enum client_state prev_state = state;
 
     state = new_state;
+
+    if (timeout) {
+      if (*onTimeout != NULL) onTimeout();
+    }
 
     if (new_state == STATE_IDLE) {
       if (!timeout && (prev_state == STATE_TRANSFER || prev_state == STATE_ACK_SENT)) {
