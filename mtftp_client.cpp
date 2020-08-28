@@ -177,15 +177,6 @@ void MtftpClient::loop(void) {
 
         // new window
         if (state == STATE_ACK_SENT) {
-          // first block received should be block 0
-          if (data_pkt->block_no != 0) {
-            ESP_LOGW(TAG, "first block after ACK has non zero block_no: %d", data_pkt->block_no);
-            new_state = STATE_IDLE;
-
-            result = RECV_BAD_AFT_ACK;
-            break;
-          }
-
           onWindowStart();
           new_state = STATE_TRANSFER;
         }
