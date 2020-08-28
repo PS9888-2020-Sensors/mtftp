@@ -1,7 +1,7 @@
 menu "MTFTP Configuration"
     config WINDOW_SIZE
         int "Window Size"
-        default 128
+        default 32
         range 1 65535
         help
         Number of blocks to transfer in a single window
@@ -19,13 +19,13 @@ menu "MTFTP Configuration"
         System times out after time in microseconds
     config LEN_MTFTP_BUFFER
         int "Block Buffer"
-        default 64
+        default 32
         range 1 128
         help
         Number of blocks to buffer on the client in the event of missing data packets
     config LEN_PACKET_BUFFER
         int "Packet Buffer"
-        default 4096
+        default 16384
         range 1024 16384
         help
         Length of the buffer to store raw received packets from the ESP-NOW ISR
