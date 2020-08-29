@@ -389,7 +389,7 @@ void MtftpClient::loop(void) {
     }
 
     if (new_state == STATE_IDLE) {
-      if (!timeout && (prev_state == STATE_TRANSFER || prev_state == STATE_ACK_SENT)) {
+      if (!timeout && (prev_state == STATE_TRANSFER || prev_state == STATE_ACK_SENT || prev_state == STATE_AWAIT_RTX)) {
         if (*onTransferEnd != NULL) onTransferEnd();
       }
 
