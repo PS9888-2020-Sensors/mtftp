@@ -364,6 +364,13 @@ void MtftpClient::loop(void) {
     params.time_last_packet = esp_timer_get_time();
   }
 
+  if ((state == STATE_AWAIT_RTX || state == STATE_ACK_SENT) && ((esp_timer_get_time() - params.time_last_packet) > CONFIG_TIMEOUT_CLIENT)) {
+    ESP_LOGD(TAG, "retransmitting reply");
+    onWindowEnd();
+
+    params.time_last_packet = esp_timer_get_time();
+  }
+
   bool timeout = state != STATE_IDLE && (esp_timer_get_time() - params.time_last_packet) > CONFIG_TIMEOUT;
   if (timeout) {
     ESP_LOGW(TAG, "timeout!");

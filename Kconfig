@@ -11,8 +11,14 @@ menu "MTFTP Configuration"
         range 1 247
         help
         Size of one block of data (bytes)
+    config TIMEOUT_CLIENT
+        int "Initial Client Timeout (us)"
+        default 20000
+        range 1 10000000
+        help
+        Client attempts to resend RTX/ACK after this timeout
     config TIMEOUT
-        int "Timeout (us)"
+        int "Overall Timeout (us)"
         default 100000
         range 1 10000000
         help
