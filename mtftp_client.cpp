@@ -315,11 +315,14 @@ void MtftpClient::loop(void) {
             break;
           }
 
+          uint32_t len_all_blocks = (params.largest_block_no - params.buffer_base_block_no) * CONFIG_LEN_BLOCK + params.len_largest_block;
+
           ESP_LOGD(TAG,
-            "writing buffer with largest_block_no=%d len_largest=%d buffer_base=%d",
+            "writing buffer with largest_block_no=%d len_largest=%d buffer_base=%d len=%d",
             params.largest_block_no,
             params.len_largest_block,
-            params.buffer_base_block_no
+            params.buffer_base_block_no,
+            len_all_blocks
           );
           writeFile(
             params.file_index,
@@ -327,8 +330,11 @@ void MtftpClient::loop(void) {
             params.buffer,
             // append len_largest_block for the possibility that the largest block
             // isnt a full block
-            (params.largest_block_no - params.buffer_base_block_no) * CONFIG_LEN_BLOCK + params.len_largest_block
+            len_all_blocks
           );
+
+          // advance file_offset by the number of bytes we just wrote
+          params.file_offset += len_all_blocks;
 
           ESP_LOGD(TAG, "all missing packets received, ending window");
         }
