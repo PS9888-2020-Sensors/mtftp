@@ -377,7 +377,7 @@ void MtftpClient::loop(void) {
   }
 
   if (new_state != STATE_NOCHANGE) {
-    ESP_LOGI(TAG, "loop: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
+    ESP_LOGD(TAG, "loop: state change from %s to %s", client_state_str[state], client_state_str[new_state]);
 
     enum client_state prev_state = state;
 
